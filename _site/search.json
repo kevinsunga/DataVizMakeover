@@ -3,17 +3,17 @@
     {
       "path": "about.html",
       "title": "About this blog",
-      "description": "Some additional details about the blog",
+      "description": "This blog is for ISSS608 Visual Analytics.",
       "author": [],
       "contents": "\r\n\r\n\r\n\r\n",
-      "last_modified": "2021-05-28T18:15:27+08:00"
+      "last_modified": "2021-05-28T18:36:03+08:00"
     },
     {
       "path": "index.html",
       "title": "ISSS608 Visual Analytics",
       "author": [],
       "contents": "\r\n\r\n\r\n\r\n",
-      "last_modified": "2021-05-28T18:15:28+08:00"
+      "last_modified": "2021-05-28T18:36:04+08:00"
     }
   ],
   "collections": ["posts/posts.json"]
