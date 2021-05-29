@@ -4,7 +4,7 @@ description: |
   In this post, I share how I used Tableau to redesign a graphic to improve its clarity and aesthetics.
 author:
   - name: Kevin Sunga
-date: 05-29-2021
+date: 05-27-2021
 output:
   distill::distill_article:
     toc: true
