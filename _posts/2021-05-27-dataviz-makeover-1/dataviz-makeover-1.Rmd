@@ -4,7 +4,7 @@ description: |
   In this post, I share how I used Tableau to redesign a graphic to improve its clarity and aesthetics.
 author:
   - name: Kevin Sunga
-date: 05-27-2021
+date: 05-29-2021
 output:
   distill::distill_article:
     toc: true
@@ -59,7 +59,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 1. I edited the title to be: “Merchandise Trade of Singapore’s Top Six Trading Partners by Total Trade Value, 2019-2020.” This title is improved because it clarifies who the trade is with (Singapore), and it prevents any confusion by changing “countries” to “partners.”
 
-    The redesign also includes a subtitle that shares a possible main insight to be gleaned from the graphic: "Merchandise trade with Mainland China, Malaysia, the United States, and Indonesia dropped late 2019 to mid 2020 at the onset of the COVID-19 pandemic. Recovery varies by country."
+    The redesign also includes a subtitle that shares a possible main insight to be gleaned from the graphic: "Merchandise trade with Mainland China, Malaysia, the United States, and Indonesia dropped late 2019 to mid 2020 at the onset of the COVID-19 pandemic. Recovery varies by market."
 
 2. To remain consistent with the title “Top Six Trading Partners, 2019-2020,” Japan is replaced with Indonesia because Singapore’s trade with Indonesia (107M thousands of dollars) is larger than its trade with Japan (100M thousands of dollars).
 
@@ -77,7 +77,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
     I darkened the axes values to the same color as the axes label. I added ticks to the x-axis. I also darkened the grid lines so they’re visible but not distracting. Furthermore, the clear presence of the gridlines creates a background that anchors the graphic.
 
-3.	I consolidate the panels into one row instead of two. This facilitates the comparison of Trade Value (S$) across countries. In addition, I order the panels on total merchandise trade by country in descending order.
+3.	I consolidate the panels into one row instead of two. This facilitates the comparison of Trade Value (S$) across markets. In addition, I order the panels on total merchandise trade by market in descending order.
 
 4. I removed the need for a legend by using direct labeling instead.
 
@@ -130,7 +130,7 @@ To see the redesigned visual in Tableau Public, click [here](https://public.tabl
 
 ![](images/4.3.7.png)
 
-8. We’ll use the function REGEX_EXTRACT to extract the country name. Input the following REGEX expression:  
+8. We’ll use the function REGEX_EXTRACT to extract the market name. Input the following REGEX expression:  
 
        TRIM(REGEXP_EXTRACT([Market],"^(.*?)\("))
      
@@ -172,7 +172,7 @@ To see the redesigned visual in Tableau Public, click [here](https://public.tabl
 
 7. Lastly, let’s sort the column in descending order by right-clicking on the “Trade Value” column and clicking “Sort descending”.
 
-8. The resulting table shows Singapore’s total trade value between 2019-2020 by “Market” in descending order (ignore the Total Merchandise rows). The top six countries are: Mainland China, Malaysia, the United States, Taiwan, Hong Kong, and Indonesia. Given the results of our analysis, we will replace Japan from the original graphic with Indonesia.
+8. The resulting table shows Singapore’s total trade value between 2019-2020 by “Market” in descending order (ignore the Total Merchandise rows). The top six markets are: Mainland China, Malaysia, the United States, Taiwan, Hong Kong, and Indonesia. Given the results of our analysis, we will replace Japan from the original graphic with Indonesia.
 
 ![](images/4.4.8.png)
 
@@ -220,7 +220,7 @@ To see the redesigned visual in Tableau Public, click [here](https://public.tabl
 
 13. Remove the row divider. Click on “Format” > “Borders”. On the left pane, set row divider to none.
 
-14. The last step is to add our titles. Set the title to “Merchandise Trade of Singapore’s Top Six Trading Partners by Total Trade Value, 2019-2020” using font Calibri, font size 18, and color #000000. To make it easy for the reader to know what the graph is about, let’s also add a subtitle “Merchandise trade with Mainland China, Malaysia, the United States, and Indonesia dropped late 2019 to mid 2020 at the onset of the COVID-19 pandemic. Recovery varies by country” using font Calibri, font size 14, and color #333333.
+14. The last step is to add our titles. Set the title to “Merchandise Trade of Singapore’s Top Six Trading Partners by Total Trade Value, 2019-2020” using font Calibri, font size 18, and color #000000. To make it easy for the reader to know what the graph is about, let’s also add a subtitle “Merchandise trade with Mainland China, Malaysia, the United States, and Indonesia dropped late 2019 to mid 2020 at the onset of the COVID-19 pandemic. Recovery varies by market” using font Calibri, font size 14, and color #333333.
 
 15.	The final graphic should look like the graphic below.
 
@@ -228,12 +228,12 @@ To see the redesigned visual in Tableau Public, click [here](https://public.tabl
 
 # 5.0 Derived Insights
 
-1. Trade drops significantly for Mainland China, Malaysia, the United States, and Indonesia from late 2019 to mid 2020. The drop coincides with the time when each country was hit with COVID-19—China in late 2019/early 2020 and the United States in March 2020. Unlike these noted countries, trade doesn’t visibly drop with Taiwan and Hong Kong—both regions that handled COVID-19 comparatively well. This is made clearer when we add trendlines.
+1. Trade drops significantly for Mainland China, Malaysia, the United States, and Indonesia from late 2019 to mid 2020. The drop coincides with the time when each market was hit with COVID-19—China in late 2019/early 2020 and the United States in March 2020. Unlike these noted markets, trade doesn’t visibly drop with Taiwan and Hong Kong—both regions that handled COVID-19 comparatively well. This is made clearer when we add trendlines.
 
 ![](images/5.0.1.jpg)
 
 2. For Taiwan, the import line is above the export line which tells us that Singapore is a net importer with Taiwan. Conversely, Singapore is a net exporter with Hong Kong and Indonesia. The trade balance is most unequal with Hong Kong where exports are roughly 800% more than imports.
 
-3. Starting in January 2020, the import line for Malaysia begins to cleanly diverge from the export line which indicates a possible shift in trading relationships between the countries. Similarly, exports overtake imports with Mainland China late 2020.
+3. Starting in January 2020, the import line for Malaysia begins to cleanly diverge from the export line which indicates a possible shift in trading relationships between the markets. Similarly, exports overtake imports with Mainland China late 2020.
 
 4. In terms of total trade value, Singapore’s top trading partners between 2019-2020 in descending order are: Mainland China, Malaysia, the United States, Taiwan, Hong Kong, and Indonesia.
