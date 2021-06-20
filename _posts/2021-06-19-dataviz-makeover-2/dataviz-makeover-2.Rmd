@@ -8,7 +8,10 @@ author:
 date: 06-19-2021
 output:
   distill::distill_article:
+    toc: true
+    toc_depth: 1
     self_contained: false
+draft: false
 ---
 
 <style type="text/css">
