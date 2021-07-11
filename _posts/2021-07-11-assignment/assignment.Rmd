@@ -1,0 +1,51 @@
+---
+title: "Assignment"
+description: |
+  A short description of the post.
+author:
+  - name: Kevin Sunga
+    url: {}
+date: 07-11-2021
+output:
+  distill::distill_article:
+    self_contained: false
+    draft: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.retina = 3,
+                      echo = TRUE,
+                      eval = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+```{r}
+packages = c("raster", "sf", "clock", "tmap",
+             "tidyverse", "rgdal", "htmlwidgets", "leaflet",
+             "geosphere")
+
+for (p in packages){
+  if(!require(p,character.only = T)){
+    install.packages(p)
+  }
+  library(p, character.only = T)
+}
+```
+
+```{r}
+df_cars <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/car-assignments.csv")
+head(df_cars)
+
+df_gps <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/gps.csv")
+head(df_gps)
+
+df_cc <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/cc_data.csv")
+head(df_cc)
+  
+df_loyalty <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/loyalty_data.csv")
+head(df_loyalty)
+
+df_location <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/location.csv")
+```
