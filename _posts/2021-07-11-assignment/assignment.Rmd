@@ -21,7 +21,7 @@ knitr::opts_chunk$set(fig.retina = 3,
                       warning = FALSE)
 ```
 
-```{r}
+```{r, include = FALSE}
 packages = c("raster", "sf", "clock", "tmap",
              "tidyverse", "rgdal", "htmlwidgets", "leaflet",
              "geosphere")
@@ -34,7 +34,7 @@ for (p in packages){
 }
 ```
 
-```{r}
+```{r, include = FALSE}
 df_cars <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/car-assignments.csv")
 head(df_cars)
 
