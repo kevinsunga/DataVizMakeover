@@ -14,17 +14,25 @@ output:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(fig.retina = 3,
-                      echo = TRUE,
-                      eval = TRUE,
-                      message = FALSE,
-                      warning = FALSE)
+
+set.seed(1234)
+
+knitr::opts_chunk$set(
+	eval = TRUE,
+	echo = TRUE,
+	fig.retina = 3,
+	message = FALSE,
+	warning = FALSE
+)
 ```
 
 ```{r, include = FALSE}
+#Load packages
+
 packages = c("raster", "sf", "clock", "tmap",
              "tidyverse", "rgdal", "htmlwidgets", "leaflet",
-             "geosphere")
+             "geosphere", "sqldf", "ggwordcloud", "ggforce",
+             "sessioninfo")
 
 for (p in packages){
   if(!require(p,character.only = T)){
@@ -34,18 +42,267 @@ for (p in packages){
 }
 ```
 
+```{r}
+# sessioninfo::session_info()
+```
+
 ```{r, include = FALSE}
-df_cars <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/car-assignments.csv")
-head(df_cars)
+# Import data
 
-df_gps <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/gps.csv")
-head(df_gps)
+df_cars <- read_csv("data/car-assignments.csv")
 
-df_cc <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/cc_data.csv")
-head(df_cc)
-  
-df_loyalty <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/loyalty_data.csv")
-head(df_loyalty)
+df_gps <- read_csv("data/gps.csv")
 
-df_location <- read_csv("C:/Users/kevin/OneDrive/Documents/SMU/Term_3_2021/Visual_Analytics/project/MC2/MC2/location.csv")
+df_cc <- read_csv("data/cc_data.csv")
+
+df_loyalty <- read_csv("data/loyalty_data.csv")
+
+df_location <- read_csv("data/location.csv")
+
+df_cars_gps_location <- readRDS("data/df_cars_gps_location_750.rds")
+```
+
+
+```{r, include = FALSE}
+# Prep data
+
+# Get date only. Needed to enable join with loyalty
+df_cc$day_timestamp <- date_time_parse(df_cc$timestamp,
+                                       zone = "",
+                                       format = "%m/%d/%Y")
+
+df_loyalty$timestamp <- date_time_parse(df_loyalty$timestamp,
+                                        zone = "",
+                                        format = "%m/%d/%Y")
+
+# Format timestamp
+df_cc$timestamp <- date_time_parse(df_cc$timestamp,
+                                 zone = "",
+                                 format = "%m/%d/%Y %H:%M")
+
+df_gps$Timestamp <- date_time_parse(df_gps$Timestamp,
+                                    zone = "",
+                                    format = "%m/%d/%Y %H:%M")
+
+# Format coordinates
+df_gps <- st_as_sf(df_gps,
+                   coords = c("long", "lat"),
+                   crs = 4326)
+
+df_location <- st_as_sf(na.omit(df_location),
+                        coords = c("long", "lat"),
+                        crs = 4326)
+
+# Rename geometry
+df_gps <- rename(df_gps, gps_geometry = geometry)
+df_location <- rename(df_location, location_geometry = geometry)
+
+# Points of Interest (POIs)
+df_gps_poi <- df_gps %>%
+  group_by(id) %>%
+  mutate(DepartureTimestamp = lead(Timestamp, order_by = id)) %>%
+  mutate(Timestamp_diff_seconds = DepartureTimestamp - Timestamp) %>%
+  mutate(is_poi = ifelse(Timestamp_diff_seconds >= 60 * 5, TRUE, FALSE)) %>%
+  filter(is_poi == TRUE)
+
+df_gps_poi <- rename(df_gps_poi, ArrivalTimestamp = Timestamp)
+```
+
+```{r, include = FALSE}
+# Join data
+
+# Join credit card and loyalty data
+df_cc_loyalty <- df_cc %>%
+  inner_join(df_loyalty, by = c("day_timestamp" = "timestamp",
+                                "location" = "location",
+                                "price" = "price"))
+
+
+# Join cars, gps, and location data
+df_cars_gps_location <- df_cars %>%
+  inner_join(df_gps_poi, by = c("CarID" = "id")) %>%
+  full_join(df_location, by = character())
+```
+
+```{r, include = FALSE}
+# This takes forever to run so I've saved it as an .rds file, and I read it
+# in later.
+
+# Calculate distance between gps points and location points
+
+# df_cars_gps_location <- df_cars_gps_location %>%
+#   rowwise() %>%
+#   mutate(distance = st_distance(gps_geometry, location_geometry)) %>%
+#   mutate(distance = as.numeric(distance)) %>%
+#   filter(distance <= 750)
+# 
+# # Save a single object to a file
+# saveRDS(df_cars_gps_location, "df_cars_gps_location_750.rds")
+```
+
+```{r, include = FALSE}
+# Set up data for word cloud
+
+# Drop geometry columns b/c they were causing errors
+df_cars_gps_location_temp <- df_cars_gps_location %>%
+  select(LastName,
+         FirstName,
+         location,
+         ArrivalTimestamp,
+         DepartureTimestamp)
+
+# Join df_cc_loyalty and df_cars_gps_location_temp
+# on location and purchase time between "arrival time"
+# and "departure time" from location
+df_cc_loyalty_owner = sqldf("select
+                               last4ccnum,
+                               loyaltynum,
+                               LastName,
+                               FirstName,
+                               a.timestamp,
+                               b.ArrivalTimestamp,
+                               b.DepartureTimestamp
+                             from df_cc_loyalty as a
+                             inner join df_cars_gps_location_temp as b
+                               on a.location = b.location
+                               and a.timestamp > b.ArrivalTimestamp
+                               and a.timestamp < b.DepartureTimestamp")
+
+# Count the number of times we see last4ccnum, loyaltynum, and full_name
+df_wordcloud <- df_cc_loyalty_owner %>%
+  unite(full_name, c("LastName", "FirstName"), sep = " ") %>%
+  unite(last4ccnum_loyaltynum, c("last4ccnum", "loyaltynum"), sep = " + ") %>%
+  count(last4ccnum_loyaltynum, full_name) %>%
+  arrange(last4ccnum_loyaltynum, desc(n))
+```
+
+```{r, include = FALSE}
+word_cloud <- function(lst) {
+  df_wordcloud %>%
+    filter(last4ccnum_loyaltynum %in% lst) %>%
+    ggplot(aes(label = full_name,
+               size = n)) +
+    geom_text_wordcloud_area(area_corr_power = 1,
+                             rm_outside = TRUE) +
+    scale_size_area(max_size = 10, trans = power_trans(1/.7)) +
+    theme_minimal() +
+    facet_wrap(~last4ccnum_loyaltynum, ncol = 2)
+}
+```
+
+# Q3
+### Can you infer the owners of each credit card and loyalty card? What is your evidence? Where are there uncertainties in your method? Where are there uncertainties in the data?
+
+### The figures below are word clouds of names likely associated with the credit card.
+
+<center>
+
+### Word Cloud of Names by last4ccnum + loyaltynum
+
+</center>
+
+```{r, echo = FALSE}
+
+lst <- c("1286 + L3288","1286 + L3572","1310 + L8012","1321 + L4149")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("1415 + L7783","1874 + L4424","1877 + L3014","2142 + L9637")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("2418 + L9018","2463 + L6886","2540 + L5947","2681 + L1107")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("3484 + L2490","3492 + L7814","3547 + L9362","3853 + L1485")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("4434 + L2169","4795 + L8566","4948 + L9406","5010 + L2459")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("5368 + L2247","5368 + L6119","5407 + L4034","5921 + L3295")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("6691 + L6267","6816 + L8148","6895 + L3366","6899 + L6267")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("6901 + L9363","7108 + L6544","7117 + L6417","7253 + L1682")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("7354 + L9254","7384 + L3800","7688 + L4164","7819 + L5259")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("7889 + L2247","7889 + L6119","8129 + L8328","8156 + L5224")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("8202 + L2343","8332 + L2070","8411 + L6110","9220 + L4063")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("9241 + L3288","9405 + L3259","9551 + L5777","9617 + L5553")
+
+word_cloud(lst)
+```
+
+```{r, echo = FALSE}
+
+lst <- c("9635 + L3191","9683 + L7291")
+
+word_cloud(lst)
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
 ```
