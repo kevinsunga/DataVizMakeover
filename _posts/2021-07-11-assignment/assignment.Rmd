@@ -28,35 +28,57 @@ knitr::opts_chunk$set(
 
 # Background
 
-During 20-21 Jan 2014, on the island country of Kronos, several employees of GAStech, a Tethys gas multinational, go missing. Who is missing? Where have they gone? Were they kidnapped? If so, who is responsible?
+During 20-21 Jan 2014, on the island country of Kronos, several employees of GAStech,
+a Tethys gas multinational, go missing. Who is missing? Where have they gone? Were
+they kidnapped? If so, who is responsible?
 
-To get to the bottom of this mystery, I will use visual analytic techniques to analyze data provided by GAStech to assist with law enforcement’s investigation and hopefully find the missing persons and bring them home safely. The data provided by GAStech covering the two weeks prior to the GAStech employees’ disappearance are as follows:
+To get to the bottom of this mystery, I will use visual analytic techniques to analyze
+data provided by GAStech to assist with law enforcement’s investigation and hopefully
+find the missing persons and bring them home safely. The data provided by GAStech
+covering the two weeks prior to the GAStech employees’ disappearance are as follows:
 
 - Movement and tracking data from GAStech’s company cars which have GPS tracking
+
 - GAStech employee’s credit card transactions and Kronos Kares loyalty card data.
 
 # Objective
 
-The objective of this project is to use visual analytic techniques to surface and identify anomalies and suspicious behavior. More precisely, I aim to shed light on the following questions:
-1. Using just the credit and loyalty card data, identify the most popular locations, and when they are popular. What anomalies do you see? What corrections would you recommend to correct these anomalies?
-2. Add the vehicle data to your analysis of the credit and loyalty card data. How does your assessment of the anomalies in question 1 change based on this new data? What discrepancies between vehicle, credit, and loyalty card data do you find?
-3. Can you infer the owners of each credit card and loyalty card? What is your evidence? Where are there uncertainties in your method? Where are there uncertainties in the data?
-4. Given the data sources provided, identify potential informal or unofficial relationships among GASTech personnel. Provide evidence for these relationships.
-5. Do you see evidence of suspicious activity? Identify 1- 10 locations where you believe the suspicious activity is occurring, and why.
+The objective of this project is to use interactive visual analytic techniques to
+surface and identify anomalies and suspicious behavior. More precisely, I aim to
+shed light on the following questions:
+
+1. Using just the credit and loyalty card data, identify the most popular locations,
+and when they are popular. What anomalies do you see? What corrections would you
+recommend to correct these anomalies?
+
+2. Add the vehicle data to your analysis of the credit and loyalty card data. How
+does your assessment of the anomalies in question 1 change based on this new data?
+What discrepancies between vehicle, credit, and loyalty card data do you find?
+
+3. Can you infer the owners of each credit card and loyalty card? What is your
+evidence? Where are there uncertainties in your method? Where are there uncertainties
+in the data?
+
+4. Given the data sources provided, identify potential informal or unofficial relationships
+among GASTech personnel. Provide evidence for these relationships.
+
+5. Do you see evidence of suspicious activity? Identify 1- 10 locations where you
+believe the suspicious activity is occurring, and why.
 
 # Literature Review
 
-We reviewed the submissions for VAST Challenge 2014 for a better appreciation of approaches and techniques adopted to solved Mini-Challenge 2. We summarise below useful methodologies we wish to consider for our project.
+I reviewed the submissions for VAST Challenge 2014 for a better appreciation of
+approaches and techniques adopted to solved Mini-Challenge 2. I summarise below
+useful methodologies I wish to consider for my assignment.
 
-The DAC-MC2 team from Virginia Tech used a methodology called Points of Interest (“POI”) to identify POIs such as people’s homes, their work places, and recreational locations (e.g. restaurants, cafes). A location is considered a POI if the time spent at a location is more than 5 minutes and the location has a diameter of less than 50 meters. They then graphed the distribution of POI over time for various days (weekdays and weekends) and locations (i.e. home, work, recreation).
+The DAC-MC2 team from Virginia Tech used a methodology called Points of Interest
+(“POI”) to identify POIs such as people’s homes, their work places, and recreational
+locations (e.g. restaurants, cafes). A location is considered a POI if the time
+spent at a location is more than 5 minutes and the location has a diameter of less
+than 50 meters. They then graphed the distribution of POI over time for various
+days (weekdays and weekends) and locations (i.e. home, work, recreation).
 
-Similarly, the MiddlesexMASS-Attfield-MC2 team from Middlesex used the Patterns of Life (“POL”) suite to create a map showing where each person was at any given time and for how long. They also overlayed credit card and loyalty transactions over their map.
-
-To better understand the credit card and loyalty card data, the IIITH-YASHASWI-MC2 team from the International Institute of Information Technology Hyderabad visualized the distributions of credit card transactions by date and by person and employment title / employee title. This analysis enabled them to better understand typical patterns and identify transactions that deviated and stood out.
-
-The Purdue-Guo-MC2 team from Purdue University created a Social Relationship Matrix, which involves plotting a heatmap of the number of times GAStech employees meet each other over the course of the two weeks. The assumption is that the more frequent people meet, the closer relationship they have between them.
-
-# Approach & Analysis
+# Methodology
 
 ## Set Up
 
@@ -69,7 +91,7 @@ packages = c("raster", "sf", "clock", "tmap",
              "tidyverse", "rgdal", "htmlwidgets", "leaflet",
              "geosphere", "sqldf", "ggwordcloud", "ggforce",
              "sessioninfo", "plotly", "lubridate", "viridis",
-             "ggraph", "igraph", "ggiraph")
+             "ggraph", "igraph", "ggiraph", "DT")
 
 for (p in packages){
   if(!require(p,character.only = T)){
@@ -83,7 +105,6 @@ I load the data used for the analysis.
 
 ```{r}
 # Import data
-
 df_cars <- read_csv("data/car-assignments.csv")
 
 df_gps <- read_csv("data/gps.csv")
@@ -107,6 +128,14 @@ df_cc <- df_cc %>%
 
 df_loyalty <- df_loyalty %>%
   mutate(location = ifelse(str_detect(location, "Katerina"), "Katerina's Cafe", location))
+```
+
+I concatenate LastName and FirstName for easier reporting.
+
+```{r}
+# Create new column full_name
+df_cars <- df_cars %>%
+  unite(full_name, c("LastName", "FirstName"), sep = " ")
 ```
 
 I use date_time_parse from the Clock R package to format the timestamps into
@@ -161,7 +190,7 @@ geometries.
 
 ```{r}
 # Format coordinates
-df_gps <- st_as_sf(df_gps,
+sf_gps <- st_as_sf(df_gps,
                    coords = c("long", "lat"),
                    crs = 4326)
 ```
@@ -169,7 +198,13 @@ df_gps <- st_as_sf(df_gps,
 I join credit card data with loyalty card data, and I join car assignments data
 with gps data.
 
-# TO DO: Justify the join logic.
+I use an inner join to join credit card data and loyalty card data to filter out
+transactions with discrepancies (e.g. price mismatch) because this just introduces
+uncertainty. By doing an inner join, I filter out 403 rows from credit card data
+and 305 rows from loyalty card data.
+
+On the other hand, I use a left join to join gps data and car assignment data. I
+do this because trucks do not have CarIDs, and I do not want to filter them out.
 
 ```{r}
 # Join credit card and loyalty data
@@ -180,6 +215,10 @@ df_cc_loyalty <- df_cc %>%
 
 # Join gps and cars data
 df_gps_cars <- df_gps %>%
+  left_join(df_cars, by = c("id" = "CarID"))
+
+# Join gps and cars data
+sf_gps_cars <- sf_gps %>%
   left_join(df_cars, by = c("id" = "CarID"))
 ```
 
@@ -357,8 +396,6 @@ day_of_week(df_loyalty, "Loyalty Card", loyalty_locations)
 
 # TO DO: Add anomalies and corrections 
 
-# TO DO: Discrepancy with location data
-
 ### Q2
 ### Add the vehicle data to your analysis of the credit and loyalty card data. How does your assessment of the anomalies in question 1 change based on this new data? What discrepancies between vehicle, credit, and loyalty card data do you find?
 
@@ -430,7 +467,7 @@ ggplotly(hm_diff_date, tooltip = "text")
 To compare the results from credit card and loyalty card data with vehicle data,
 I must georeference the map of Abila and determine what GPS coordinates to plot.
 
-I used QGIS to georeference the map of Abila. I then load the georeferenced map
+I use QGIS to georeference the map of Abila. I then load the georeferenced map
 using the Raster R package.
 
 ```{r}
@@ -441,32 +478,39 @@ To determine what GPS coordinates to plot, I take a page from the DAC-MC2 team f
 Virginia Tech and calculate "Points of Interest" or POIs. We know that the tracking
 devices are tracking the car's location periodically as long as the car is moving.
 Thus, when there is a gap in the data, we know the car must have stopped or parked.
-I define a POI as a point where the car was stopped for at least 5 minutes.
+I take advantage of this feature of the data to calculate how long a car was stopped
+or parked. If a car was stopped or parked for more than 5 minutes, I consider it
+as a POI.
 
 ```{r}
 # Points of Interest (POIs)
-df_poi <- df_gps_cars %>%
+sf_poi <- sf_gps_cars %>%
   group_by(id) %>%
   mutate(DepartureTimestamp = lead(Timestamp, order_by = id)) %>%
   mutate(Timestamp_diff_seconds = DepartureTimestamp - Timestamp) %>%
   mutate(is_poi = ifelse(Timestamp_diff_seconds >= 60 * 5, TRUE, FALSE)) %>%
   filter(is_poi == TRUE)
 
-df_poi <- rename(df_poi, ArrivalTimestamp = Timestamp)
+sf_poi <- rename(sf_poi, ArrivalTimestamp = Timestamp)
 ```
 
 I graph the POIs onto the georeferenced map.
 
+<center>
+### POIs by Date
+</center>
+
 ```{r}
-gps_dots_selected <- df_poi %>%
+gps_dots_selected <- sf_poi %>%
   mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
   select(id,
          day_timestamp,
+         hour_of_day,
+         day_of_week,
          ArrivalTimestamp,
          DepartureTimestamp,
          MinutesDuration,
-         LastName,
-         FirstName,
+         full_name,
          CurrentEmploymentType,
          CurrentEmploymentTitle)
 tmap_mode("view")
@@ -478,25 +522,27 @@ m <- tm_shape(bgmap) +
          max.value = 255) +
 tm_shape(gps_dots_selected) +
   tm_dots(col = 'red', border.col = 'gray', size = .1, alpha = 0.3, jitter = 1) +
-  tm_facets(by="day_timestamp", ncol = 2)
+  tm_facets(by = "day_timestamp", ncol = 1)
 m
 ```
 
-# TO DO: Figure out what variations of the map to show.
+<center>
+### POIs by Day of Week
+</center>
 
-```{r, eval = FALSE}
-gps_dots_selected <- gps_sf %>%
-  filter(CurrentEmploymentType == "Security") %>%
+```{r}
+gps_dots_selected <- sf_poi %>%
   mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
   select(id,
+         day_timestamp,
+         hour_of_day,
+         day_of_week,
          ArrivalTimestamp,
          DepartureTimestamp,
          MinutesDuration,
-         LastName,
-         FirstName,
+         full_name,
          CurrentEmploymentType,
-         CurrentEmploymentTitle,
-         gps_geometry)
+         CurrentEmploymentTitle)
 tmap_mode("view")
 m <- tm_shape(bgmap) +
   tm_rgb(bgmap, r = 1, g = 2, b =3,
@@ -505,25 +551,389 @@ m <- tm_shape(bgmap) +
          interpolate = TRUE,
          max.value = 255) +
 tm_shape(gps_dots_selected) +
-  tm_dots(col = 'red', border.col = 'gray', size = 0.007, alpha = 0.3)
+  tm_dots(col = 'red', border.col = 'gray', size = .1, alpha = 0.3, jitter = 1) +
+  tm_facets(by = "day_of_week", ncol = 1)
 m
 ```
 
-#  How does your assessment of the anomalies in question 1 change based on this new data? What discrepancies between vehicle, credit, and loyalty card data do you find?
-
-# TO DO: Interactive data table + facet map
-
-## Q3
+### Q3
 ### Can you infer the owners of each credit card and loyalty card? What is your evidence? Where are there uncertainties in your method? Where are there uncertainties in the data?
 
-# TO DO:
+To infer the owners of each credit card and loyalty card using visual analytics,
+I propose visualizing an interactive map with POIs and an interactive data table
+of credit card and loyalty card data. Using these two as visual tools, I propose
+triangulating the purchases with the POIs. The person who made the purchase at a
+location should have their GPS at that same location and time.
 
-## Q4
+There are some important assumptions worth mentioning with this approach. First,
+the credit card data and GPS tracker data accurately represent the truth. That is,
+the timestamp logged for a transaction is the exact time the purchase was made,
+and the GPS tracker was functioning correctly.
+
+Second, the vehicle was being driven by the person assigned to it and no one else.
+In addition, the person who drove the vehicle is the one who made the purchase.
+
+I clean the credit card and loyalty card data and prepare to visualize it in a 
+table format.
+
+```{r}
+df_cc_cleaned <- df_cc_loyalty %>%
+  mutate(last4ccnum = as.character(last4ccnum),
+         timestamp = format(timestamp, "%m/%d/%Y %H:%M")) %>%
+  select(
+    timestamp,
+    location,
+    last4ccnum,
+    loyaltynum
+  )
+```
+
+```{r, fig.width = 9}
+DT::datatable(df_cc_cleaned,
+              class = 'cell-border',
+              filter = 'top',
+              caption = htmltools::tags$caption(
+                style = 'caption-side: bottom; text-align: center;',
+                'Table: ', htmltools::em('Credit card and Loyalty card data.'))) %>%
+  formatDate(1, method = 'toLocaleString', params = list(month = 'numeric',
+                                                         day = 'numeric',
+                                                         year = 'numeric',
+                                                         hour = 'numeric',
+                                                         minute = 'numeric')) %>%
+  formatStyle(0,
+              target = 'row',
+              lineHeight = '25%')
+```
+
+### Q4
 ### Given the data sources provided, identify potential informal or unofficial relationships among GASTech personnel. Provide evidence for these relationships.
+
+I must recalculate POIs again because, for reasons discussed later on, the data
+cannot have geometries at this point.
+
+```{r, eval = FALSE}
+df_poi <- df_gps_cars %>%
+  group_by(id) %>%
+  mutate(DepartureTimestamp = lead(Timestamp, order_by = id)) %>%
+  mutate(Timestamp_diff_seconds = as.numeric(DepartureTimestamp - Timestamp)) %>%
+  mutate(is_poi = ifelse(Timestamp_diff_seconds >= 60 * 5, TRUE, FALSE)) %>%
+  filter(is_poi == TRUE)
+
+df_poi <- rename(df_poi, ArrivalTimestamp = Timestamp)
+```
+
+I use the sqldf R package to join df_poi onto itself. This package is helpful in this
+situation because the join condition compares dates and is not an equality. By joining
+on ArrivalTimestamp and DepartureTimestamp (as seen below), I get the records where
+the POIs overlap in time. It may be possible to accomplish a similar effect with the dplyr
+package, but I found it accomplished much easier using sqldf.
+
+*Note: sqldf does not work with geometries.*
+
+```{r, eval = FALSE}
+df_meetups = sqldf(
+"select
+  *,
+  a.id || b.id ||
+    a.ArrivalTimestamp || b.ArrivalTimestamp ||
+    a.DepartureTimestamp || b.DepartureTimestamp ||
+    a.lat || b.lat || a.long || b.long as key
+from df_poi as a
+inner join df_poi as b
+  on a.id != b.id
+  and a.ArrivalTimestamp < b.DepartureTimestamp
+  and a.DepartureTimestamp > b.ArrivalTimestamp")
+```
+
+I split df_meetups into "a" and "b" data sets. I do this because st_as_sf will only
+create one geometry per df. Thus, I must convert the coordinates for a and b separately
+and bring them together. I concatenate data from several columns to create a key which
+I later use to join the data back together.
+
+```{r, eval = FALSE}
+df_meetups_a = sqldf(
+"select
+  a.*,
+  a.id || b.id ||
+  a.ArrivalTimestamp || b.ArrivalTimestamp ||
+  a.DepartureTimestamp || b.DepartureTimestamp ||
+  a.lat || b.lat ||
+  a.long || b.long as key
+from df_poi as a
+inner join df_poi as b
+  on a.id != b.id
+  and a.ArrivalTimestamp < b.DepartureTimestamp
+  and a.DepartureTimestamp > b.ArrivalTimestamp")
+
+df_meetups_b = sqldf(
+"select
+  b.*,
+  a.id || b.id ||
+  a.ArrivalTimestamp || b.ArrivalTimestamp ||
+  a.DepartureTimestamp || b.DepartureTimestamp ||
+  a.lat || b.lat ||
+  a.long || b.long as key
+from df_poi as a
+inner join df_poi as b
+  on a.id != b.id
+  and a.ArrivalTimestamp < b.DepartureTimestamp
+  and a.DepartureTimestamp > b.ArrivalTimestamp")
+```
+
+I use the sf R package to turn the longitude and latitude coordinate points into
+geometries.
+
+```{r, eval = FALSE}
+# Format coordinates
+df_meetups_a <- st_as_sf(df_meetups_a,
+                         coords = c("long", "lat"),
+                         crs = 4326)
+
+df_meetups_b <- st_as_sf(df_meetups_b,
+                         coords = c("long", "lat"),
+                         crs = 4326)
+```
+
+I bring the "a" and "b" data sets each with their own geometries together. dplyr's
+inner_join doesn't allow the first and second data sets to be sf objects. To get around
+this, I create a dummy table "CurrentEmploymentType" so "a" and "b" are 2nd
+and 3rd respectively, and this lets me join the two data sets together using dplyr's
+inner_join.
+
+```{r, eval = FALSE}
+# Dummy table
+CurrentEmploymentType <- unique(df_cars$CurrentEmploymentType)
+CurrentEmploymentType <- data.frame(CurrentEmploymentType)
+
+df_meetups <- CurrentEmploymentType %>%
+  inner_join(df_meetups_a, by = c("CurrentEmploymentType")) %>%
+  inner_join(df_meetups_b, by = c("key"))
+```
+
+I calculate the distance in meters between the two geometries. I save the data 
+into a .rds file because this code takes a long time to execute. In future executions,
+I simply have to read this .rds file.
+
+```{r, eval = FALSE}
+# Calculate distance between two geometries
+
+df_meetups <- df_meetups %>%
+  rowwise() %>%
+  mutate(distance = st_distance(geometry.x, geometry.y)) %>%
+  mutate(distance = as.numeric(distance))
+
+# Save a single object to a file
+saveRDS(df_meetups, "df_meetups.rds")
+```
+
+I create these two helper functions: greater and lesser to help clean up my code
+later when I have to compare timestamps and return the greater and lesser of two timestamps.
+
+```{r r}
+# Compares two values and returns the greater value
+greater <- function(x, y) {
+  ifelse(
+    x >= y,
+    return(x),
+    return(y)
+  )
+}
+
+# Compares two values and returns the lesser value
+lesser <- function(x, y) {
+  ifelse(
+    x <= y,
+    return(x),
+    return(y)
+  )
+}
+```
+
+I filter the rows in df_meetups so the distance between the two geometries is
+less than 100 meters. This ensures that the two cars were in the same general area.
+
+What we're now left with are POIs that overlap in time and happened in the same
+area (within 100 meters). I'll call these "meet ups" moving forward.
+
+I  calculate the overlap in time between one person's arrival and departure and
+another person's arrival and departure.
+
+```{r}
+df_meetups_filtered <- df_meetups %>%
+  filter(distance <= 100) %>%
+  select(
+    full_name.x,
+    ArrivalTimestamp.x,
+    DepartureTimestamp.x,
+    CurrentEmploymentType.x,
+    CurrentEmploymentTitle.x,
+    full_name.y,
+    ArrivalTimestamp.y,
+    DepartureTimestamp.y,
+    CurrentEmploymentType.y,
+    CurrentEmploymentTitle.y,
+    distance,
+    day_timestamp.x,
+    day_of_week.x,
+    hour_of_day.x
+  ) %>%
+  rename(
+    day_timestamp = day_timestamp.x,
+    day_of_week = day_of_week.x,
+    hour_of_day = hour_of_day.x
+  ) %>%
+  mutate(overlap = (lesser(DepartureTimestamp.x, DepartureTimestamp.y)
+         - greater(ArrivalTimestamp.x, ArrivalTimestamp.y)) / 60)
+```
+
+I pass df_meetups_filtered to ggraph to graph a network of POIs between people who
+were in the same time and location.
+
+<center>
+### Early Morning Meet Ups Between 12:00 AM and 6:00 AM (Arrival Time)
+</center>
+
+```{r}
+network <- df_meetups_filtered %>%
+  filter(hour_of_day <= 6) %>%
+  select(
+    full_name.x,
+    full_name.y,
+    overlap
+  ) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(alpha = overlap)) +
+  geom_node_point(size = 6,
+                  color = "lightblue") +
+  geom_node_text(aes(label = name),
+                 color = "red",
+                 repel = TRUE) +
+  theme_void()
+network
+```
+<center>
+### Late Night Meet Ups Between 9:00 PM and 12:00 AM (Arrival Time)
+</center>
+
+```{r}
+network <- df_meetups_filtered %>%
+  filter(hour_of_day >= 21) %>%
+  select(
+    full_name.x,
+    full_name.y,
+    overlap
+  ) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(alpha = overlap)) +
+  geom_node_point(size = 6,
+                  color = "lightblue") +
+  geom_node_text(aes(label = name),
+                 color = "red",
+                 repel = TRUE) +
+  theme_void()
+network
+```
+
+<center>
+### Weekend Meet Ups (Saturday and Sunday)
+</center>
+
+```{r}
+network <- df_meetups_filtered %>%
+  filter(day_of_week %in% c("Saturday", "Sunday")) %>%
+  select(
+    full_name.x,
+    full_name.y,
+    overlap
+  ) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(alpha = overlap)) +
+  geom_node_point(size = 6,
+                  color = "lightblue") +
+  geom_node_text(aes(label = name),
+                 color = "red",
+                 repel = TRUE) +
+  theme_void()
+network
+```
+
+<center>
+### Long Meet Ups Between 6 and 8 Hours Long
+</center>
+
+```{r}
+network <- df_meetups_filtered %>%
+  filter(overlap >= 60 * 6, overlap <= 60 * 8) %>%
+  select(
+    full_name.x,
+    full_name.y,
+    overlap
+  ) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(alpha = overlap)) +
+  geom_node_point(size = 6,
+                  color = "lightblue") +
+  geom_node_text(aes(label = name),
+                 color = "red",
+                 repel = TRUE) +
+  theme_void()
+network
+```
+
+<center>
+### Long Meet Ups Longer than 8 Hours
+</center>
+
+```{r}
+network <- df_meetups_filtered %>%
+  filter(overlap >= 60 * 8) %>%
+  select(
+    full_name.x,
+    full_name.y,
+    overlap
+  ) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(alpha = overlap)) +
+  geom_node_point(size = 6,
+                  color = "lightblue") +
+  geom_node_text(aes(label = name),
+                 color = "red",
+                 repel = TRUE) +
+  theme_void()
+network
+```
+
+```{r, eval = FALSE}
+
+# library(visNetwork)
+# 
+# list_of_names <- unique(df_cars$full_name)
+# n_names <- length(list_of_names)
+# 
+# nodes <- data.frame(id = list_of_names,
+#                     label = list_of_names)
+# 
+# edges <- df_meetups_filtered %>%
+#   select(
+#     full_name.x,
+#     full_name.y
+#   ) %>%
+#   rename(
+#     from = full_name.x,
+#     to = full_name.y
+#   )
+# 
+# visNetwork(nodes, edges)
+```
 
 # TO DO: Pull from 1-4
 
-## Q5
+### Q5
 ### Do you see evidence of suspicious activity? Identify 1- 10 locations where you believe the suspicious activity is occurring, and why.
 
 ```{r}
@@ -563,7 +973,7 @@ tm_shape(gps_path_selected) +
 
 ```{r, eval = FALSE}
 # Facets map
-gps_dots_selected <- df_poi %>%
+gps_dots_selected <- sf_poi %>%
   mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
   select(id,
          ArrivalTimestamp,
@@ -583,5 +993,29 @@ m <- tm_shape(bgmap) +
 tm_shape(gps_dots_selected) +
   tm_dots(col = 'red', border.col = 'gray', size = .1, alpha = 0.3, jitter = 1) +
   tm_facets(by="id", ncol = 2)
+m
+```
+
+```{r, eval = FALSE}
+gps_dots_selected <- gps_sf %>%
+  filter(CurrentEmploymentType == "Security") %>%
+  mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
+  select(id,
+         ArrivalTimestamp,
+         DepartureTimestamp,
+         MinutesDuration,
+         full_name,
+         CurrentEmploymentType,
+         CurrentEmploymentTitle,
+         gps_geometry)
+tmap_mode("view")
+m <- tm_shape(bgmap) +
+  tm_rgb(bgmap, r = 1, g = 2, b =3,
+         alpha = NA,
+         saturation = 1,
+         interpolate = TRUE,
+         max.value = 255) +
+tm_shape(gps_dots_selected) +
+  tm_dots(col = 'red', border.col = 'gray', size = 0.007, alpha = 0.3)
 m
 ```
