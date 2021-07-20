@@ -69,7 +69,7 @@ believe the suspicious activity is occurring, and why.
 
 I reviewed the submissions for VAST Challenge 2014 for a better appreciation of
 approaches and techniques adopted to solved Mini-Challenge 2. I summarise below
-useful methodologies I wish to consider for my assignment.
+some of the useful methodologies I consider for my assignment.
 
 The DAC-MC2 team from Virginia Tech used a methodology called Points of Interest
 (“POI”) to identify POIs such as people’s homes, their work places, and recreational
@@ -119,7 +119,7 @@ df_meetups <- readRDS("data/df_meetups.rds")
 ## Cleaning and Preparation
 
 I noticed that Katerina’s Café was causing issues with R likely due to the
-apostrophe and é characters. I clean this to prevent issues.
+’ and é characters. I clean this to prevent issues.
 
 ```{r}
 # Clean location names
@@ -201,7 +201,9 @@ with gps data.
 I use an inner join to join credit card data and loyalty card data to filter out
 transactions with discrepancies (e.g. price mismatch) because this just introduces
 uncertainty. By doing an inner join, I filter out 403 rows from credit card data
-and 305 rows from loyalty card data.
+and 305 rows from loyalty card data. I'm not too concerned about filtering data out
+because I continue to evaluate the data individually so the filtered out transactions
+will not be ignored.
 
 On the other hand, I use a left join to join gps data and car assignment data. I
 do this because trucks do not have CarIDs, and I do not want to filter them out.
@@ -222,14 +224,14 @@ sf_gps_cars <- sf_gps %>%
   left_join(df_cars, by = c("id" = "CarID"))
 ```
 
-## Analysis
+## Solution Design
 
 ### Q1
 
 ### Using just the credit and loyalty card data, identify the most popular locations, and when they are popular. What anomalies do you see? What corrections would you recommend to correct these anomalies?
 
 To determine the most popular locations, I use interactive heatmap visualizations
-of credit card and loyalty card data. I visualize this data by location and 
+of credit card and loyalty card data. I visualize this data by location and
 across three time dimensions where possible: hour of day, date, and day of week.
 
 *Note: For brevity, I will only elaborate and surface the code for one heatmap.
@@ -325,7 +327,7 @@ date <- function(df, df_source, locations) {
     mutate(location = as.factor(location),
            day_timestamp = as.factor(day_timestamp),
            text = paste0("Location: ", location, "\n", "Date: ", day_timestamp, "\n", "n: ", n))
-  
+
   hm_date <- ggplot(df_date, aes(day_timestamp,
                                  location,
                                  fill = n,
@@ -365,7 +367,7 @@ day_of_week <- function(df, df_source, locations) {
     mutate(location = as.factor(location),
            day_of_week = as.factor(day_of_week),
            text = paste0("Location: ", location, "\n", "Day of Week: ", day_of_week, "\n", "n: ", n))
-  
+
   hm_day_of_week <- ggplot(df_day_of_week, aes(day_of_week,
                                                location,
                                                fill = n,
@@ -393,8 +395,6 @@ day_of_week(df_cc, "Credit Card", cc_locations)
 ```{r, echo = FALSE, fig.width = 8, fig.height = 8}
 day_of_week(df_loyalty, "Loyalty Card", loyalty_locations)
 ```
-
-# TO DO: Add anomalies and corrections 
 
 ### Q2
 ### Add the vehicle data to your analysis of the credit and loyalty card data. How does your assessment of the anomalies in question 1 change based on this new data? What discrepancies between vehicle, credit, and loyalty card data do you find?
@@ -514,46 +514,16 @@ gps_dots_selected <- sf_poi %>%
          CurrentEmploymentType,
          CurrentEmploymentTitle)
 tmap_mode("view")
-m <- tm_shape(bgmap) +
+m_d <- tm_shape(bgmap) +
   tm_rgb(bgmap, r = 1, g = 2, b =3,
          alpha = NA,
          saturation = 1,
          interpolate = TRUE,
          max.value = 255) +
 tm_shape(gps_dots_selected) +
-  tm_dots(col = 'red', border.col = 'gray', size = .1, alpha = 0.3, jitter = 1) +
+  tm_dots(col = 'red', border.col = 'gray', size = .4, alpha = 0.3, jitter = .8) +
   tm_facets(by = "day_timestamp", ncol = 1)
-m
-```
-
-<center>
-### POIs by Day of Week
-</center>
-
-```{r}
-gps_dots_selected <- sf_poi %>%
-  mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
-  select(id,
-         day_timestamp,
-         hour_of_day,
-         day_of_week,
-         ArrivalTimestamp,
-         DepartureTimestamp,
-         MinutesDuration,
-         full_name,
-         CurrentEmploymentType,
-         CurrentEmploymentTitle)
-tmap_mode("view")
-m <- tm_shape(bgmap) +
-  tm_rgb(bgmap, r = 1, g = 2, b =3,
-         alpha = NA,
-         saturation = 1,
-         interpolate = TRUE,
-         max.value = 255) +
-tm_shape(gps_dots_selected) +
-  tm_dots(col = 'red', border.col = 'gray', size = .1, alpha = 0.3, jitter = 1) +
-  tm_facets(by = "day_of_week", ncol = 1)
-m
+m_d
 ```
 
 ### Q3
@@ -562,8 +532,8 @@ m
 To infer the owners of each credit card and loyalty card using visual analytics,
 I propose visualizing an interactive map with POIs and an interactive data table
 of credit card and loyalty card data. Using these two as visual tools, I propose
-triangulating the purchases with the POIs. The person who made the purchase at a
-location should have their GPS at that same location and time.
+triangulating the transactions with the POIs. The person who made the transaction at a
+location should have their GPS around that same location and time.
 
 There are some important assumptions worth mentioning with this approach. First,
 the credit card data and GPS tracker data accurately represent the truth. That is,
@@ -573,19 +543,18 @@ and the GPS tracker was functioning correctly.
 Second, the vehicle was being driven by the person assigned to it and no one else.
 In addition, the person who drove the vehicle is the one who made the purchase.
 
-I clean the credit card and loyalty card data and prepare to visualize it in a 
+I clean the credit card and loyalty card data and prepare to visualize it in a
 table format.
 
 ```{r}
-df_cc_cleaned <- df_cc_loyalty %>%
+df_cc_cleaned <- df_cc %>%
   mutate(last4ccnum = as.character(last4ccnum),
          timestamp = format(timestamp, "%m/%d/%Y %H:%M")) %>%
   select(
     timestamp,
     location,
-    last4ccnum,
-    loyaltynum
-  )
+    last4ccnum
+    )
 ```
 
 ```{r, fig.width = 9}
@@ -594,12 +563,59 @@ DT::datatable(df_cc_cleaned,
               filter = 'top',
               caption = htmltools::tags$caption(
                 style = 'caption-side: bottom; text-align: center;',
-                'Table: ', htmltools::em('Credit card and Loyalty card data.'))) %>%
+                'Table: ', htmltools::em('Credit card data.'))) %>%
   formatDate(1, method = 'toLocaleString', params = list(month = 'numeric',
                                                          day = 'numeric',
                                                          year = 'numeric',
                                                          hour = 'numeric',
                                                          minute = 'numeric')) %>%
+  formatStyle(0,
+              target = 'row',
+              lineHeight = '25%')
+```
+
+```{r}
+df_loyalty_cleaned <- df_loyalty %>%
+  select(
+    day_timestamp,
+    location,
+    loyaltynum
+    )
+```
+
+```{r, fig.width = 9}
+DT::datatable(df_loyalty_cleaned,
+              class = 'cell-border',
+              filter = 'top',
+              caption = htmltools::tags$caption(
+                style = 'caption-side: bottom; text-align: center;',
+                'Table: ', htmltools::em('Loyalty card data.'))) %>%
+  formatDate(1, method = 'toLocaleDateString', params = list(month = 'numeric',
+                                                         day = 'numeric',
+                                                         year = 'numeric')) %>%
+  formatStyle(0,
+              target = 'row',
+              lineHeight = '25%')
+```
+I surface the credit card and loyalty card information from df_cc_loyalty which is the joined data. With this interactive table, it's possible to enter a credit card and see what loyalty card it's associated with and vice versa. Note that there's uncertainty with this method: it's possible for one card to be associated with multiple cards.
+
+```{r}
+df_cc_loyalty_cleaned <- df_cc_loyalty %>%
+  mutate(last4ccnum = as.character(last4ccnum)) %>%
+  select(
+    last4ccnum,
+    loyaltynum
+    )
+df_cc_loyalty_cleaned <- distinct(df_cc_loyalty_cleaned)
+```
+
+```{r, fig.width = 9}
+DT::datatable(df_cc_loyalty_cleaned,
+              class = 'cell-border',
+              filter = 'top',
+              caption = htmltools::tags$caption(
+                style = 'caption-side: bottom; text-align: center;',
+                'Table: ', htmltools::em('Credit Card and Loyalty card'))) %>%
   formatStyle(0,
               target = 'row',
               lineHeight = '25%')
@@ -710,7 +726,7 @@ df_meetups <- CurrentEmploymentType %>%
   inner_join(df_meetups_b, by = c("key"))
 ```
 
-I calculate the distance in meters between the two geometries. I save the data 
+I calculate the distance in meters between the two geometries. I save the data
 into a .rds file because this code takes a long time to execute. In future executions,
 I simply have to read this .rds file.
 
@@ -790,12 +806,12 @@ I pass df_meetups_filtered to ggraph to graph a network of POIs between people w
 were in the same time and location.
 
 <center>
-### Early Morning Meet Ups Between 12:00 AM and 6:00 AM (Arrival Time)
+### Early Morning Meet Ups Between 12:00 AM and 5:00 AM (Arrival Time)
 </center>
 
 ```{r}
 network <- df_meetups_filtered %>%
-  filter(hour_of_day <= 6) %>%
+  filter(hour_of_day <= 5) %>%
   select(
     full_name.x,
     full_name.y,
@@ -837,12 +853,31 @@ network
 ```
 
 <center>
-### Weekend Meet Ups (Saturday and Sunday)
+### Weekend Meet Ups Longer than 2 Hours (Saturday and Sunday)
 </center>
 
 ```{r}
 network <- df_meetups_filtered %>%
-  filter(day_of_week %in% c("Saturday", "Sunday")) %>%
+  filter(day_of_week %in% c("Saturday", "Sunday"), overlap >= 60 * 2) %>%
+  select(
+    full_name.x,
+    full_name.y,
+    overlap
+  ) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(alpha = overlap)) +
+  geom_node_point(size = 6,
+                  color = "lightblue") +
+  geom_node_text(aes(label = name),
+                 color = "red",
+                 repel = TRUE) +
+  theme_void()
+network
+```
+```{r}
+network <- df_meetups_filtered %>%
+  filter(day_of_week %in% c("Saturday", "Sunday"), overlap >= 60 * 2) %>%
   select(
     full_name.x,
     full_name.y,
@@ -866,7 +901,11 @@ network
 
 ```{r}
 network <- df_meetups_filtered %>%
-  filter(overlap >= 60 * 6, overlap <= 60 * 8) %>%
+  filter(overlap >= 60 * 6, day_of_week %in% c("Monday",
+                                                                  "Tuesday",
+                                                                  "Wednesday",
+                                                                  "Thursday",
+                                                                  "Friday")) %>%
   select(
     full_name.x,
     full_name.y,
@@ -908,114 +947,22 @@ network <- df_meetups_filtered %>%
 network
 ```
 
-```{r, eval = FALSE}
-
-# library(visNetwork)
-# 
-# list_of_names <- unique(df_cars$full_name)
-# n_names <- length(list_of_names)
-# 
-# nodes <- data.frame(id = list_of_names,
-#                     label = list_of_names)
-# 
-# edges <- df_meetups_filtered %>%
-#   select(
-#     full_name.x,
-#     full_name.y
-#   ) %>%
-#   rename(
-#     from = full_name.x,
-#     to = full_name.y
-#   )
-# 
-# visNetwork(nodes, edges)
-```
-
-# TO DO: Pull from 1-4
-
 ### Q5
 ### Do you see evidence of suspicious activity? Identify 1- 10 locations where you believe the suspicious activity is occurring, and why.
 
-```{r}
-```
+To answer this question, I mainly reference the work already done in Q1-4, but I
+also reference some exploratory-data analysis work not mentioned in Q1-4.
 
-```{r}
-```
+# Analysis
 
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r, eval = FALSE}
-gps_path <- gps_sfx %>%
-  group_by(id) %>%
-  summarize(m = mean(Timestamp),
-            do_union = FALSE) %>%
-  st_cast("LINESTRING")
-
-gps_path_selected <- gps_path %>%
-  filter(id == 1)
-tmap_mode("view")
-tm_shape(bgmap) +
-  tm_rgb(bgmap, r = 1, g = 2, b =3,
-         alpha = NA,
-         saturation = 1,
-         interpolate = TRUE,
-         max.value = 255) +
-tm_shape(gps_path_selected) +
-  tm_lines()
-```
-
-```{r, eval = FALSE}
-# Facets map
-gps_dots_selected <- sf_poi %>%
-  mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
-  select(id,
-         ArrivalTimestamp,
-         DepartureTimestamp,
-         MinutesDuration,
-         LastName,
-         FirstName,
-         CurrentEmploymentType,
-         CurrentEmploymentTitle)
-tmap_mode("view")
-m <- tm_shape(bgmap) +
-  tm_rgb(bgmap, r = 1, g = 2, b =3,
-         alpha = NA,
-         saturation = 1,
-         interpolate = TRUE,
-         max.value = 255) +
-tm_shape(gps_dots_selected) +
-  tm_dots(col = 'red', border.col = 'gray', size = .1, alpha = 0.3, jitter = 1) +
-  tm_facets(by="id", ncol = 2)
-m
-```
-
-```{r, eval = FALSE}
-gps_dots_selected <- gps_sf %>%
-  filter(CurrentEmploymentType == "Security") %>%
-  mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
-  select(id,
-         ArrivalTimestamp,
-         DepartureTimestamp,
-         MinutesDuration,
-         full_name,
-         CurrentEmploymentType,
-         CurrentEmploymentTitle,
-         gps_geometry)
-tmap_mode("view")
-m <- tm_shape(bgmap) +
-  tm_rgb(bgmap, r = 1, g = 2, b =3,
-         alpha = NA,
-         saturation = 1,
-         interpolate = TRUE,
-         max.value = 255) +
-tm_shape(gps_dots_selected) +
-  tm_dots(col = 'red', border.col = 'gray', size = 0.007, alpha = 0.3)
-m
-```
+|#| Analysis | Evidence |
+|-|:---------------------|:---------------------------------------|
+|<b>1</b>| Based on credit card data, the most popular locations are restaurants and coffee shops, namely Katerina’s Café, Hippokampos, Guy's Gyros, and Brew've Been Served. Katerina’s Café is the most popular location with the most transactions. It had 20 transactions—the most of any location and day on January 18, 2014 (see fig 1.1).<br><br> Katerina’s Café is most popular on Saturdays, Tuesdays, and Thursdays (34, 33, and 32 transactions respectively). Furthermore, Katerina’s Café is most popular around dinner time 6-9 PM with the peak number of transactions at 8PM with 84 transactions (see fig 1.2).<br><br> Brew've Been Served, a coffee shop, only has transactions on weekdays which suggests it's only open Monday - Friday and is closed on weekends. It's most popular at 7AM which further suggests that GAStech employees tend to go to Brew've Been Served first thing before heading into work.<br><br> With loyalty card data, restaurants and coffee shops are still the most popular (see fig 1.3).<br><br> The credit card transactions by hour of day for the 6 coffee shops: Brew’ve Been Served, Brewed Awakenings, Coffee Cameleon, Coffee Shack, Hallowed Grounds, and Jack’s Magical Beans appear to be batch processed (see fig 1.4). That is, transactions only show up at certain times. For example, Brew’ve Been Served only shows transactions at 7 and 8AM and Jack’s Magical Beans only shows transactions at 12PM. It’s possible that these are accurate and that Brew’ve Been Served only sells coffee between 7 and 8AM and so on. However, what’s more likely is that the transaction timestamps aren’t real-time, but they’re processed in batches.<br><br> First, this hypothesis should be verified. If verified to be true, the transaction timestamps should be corrected for any daily discrepancies. For example, are the transactions for Brew’ve Been Served submitted at 7AM for that day or the day prior? Lastly, it should be noted that hourly data for these 6 coffee shops may be inaccurate and to only rely on the day timestamp.| ![Fig 1.1](images/q1.1.png){width=100%} Fig 1.1<br><br> ![Fig 1.2](images/q1.2.png){width=100%} Fig 1.2<br><br> ![Fig 1.3](images/q1.3.png){width=100%} Fig 1.3<br><br> ![Fig 1.4](images/q1.4.png){width=100%} Fig 1.4<br><br>|
+|2| Vehicle data shows a different dimension of popular locations compared to credit card and loyalty card data. It’s possible to see where people may spend a great deal of time but may not be making purchases using credit cards or loyalty cards (e.g. their homes, their offices, parks, etc.) (see fig 2.1). For example, the most popular location on January 17, 2014 was the GAStech office. This kind of activity information is lacking in the credit card and loyalty card data.<br><br> Generally, vehicle data is aligned with credit card and loyalty card data. Restaurants and coffee shops are also the most popular locations based on vehicle data on January 18, 2014 (a Saturday) (see fig 2.2).<br><br> However, there are some discrepancies. Transaction data may not give the full picture on activity at a location. For example, there were only 2 credit card and loyalty card transactions at the museum on January 18, 2014 which suggests that only 2 people went to the museum on this date. However, there were more than 5 distinct POIs near the museum on January 18, 2014 (see fig 2.2).| ![Fig 2.1](images/q2.1.png){width=100%} Fig 2.1<br><br><br><br> ![Fig 2.2](images/q2.2.png){width=100%} Fig 2.2<br><br><br><br>|
+|3| To determine the owner of a credit card, first look up a transaction. In this example, I pull transactions made at Desafio Golf Course. Consider the transaction made on credit card 2463 at 1/12/2014, 1:45:00 PM at Desafio Golf Course (see fig 3.1).<br><br> The person who made this transaction should have a POI near the golf course before the time of the transaction. Using the interactive map, there are 3 people who were at the golf course at the same date and time (see fig 3.2):<br> 1) Vasco-Pais Willem (12:49 – 4:22)<br> 2) Campo-Corrente Ada (1:46 – 4:12)<br> 3) Barranco Ingrid (1:06 – 4:05)<br><br> Rule out Campo-Corrente Ada because they arrived after the transaction time. Thus, there’s a 50-50% chance that credit card 2463 is owned by either Vasco-Pais Willem or Barranco Ingrid.<br><br> To improve the odds, look up another transaction made on credit card 2463 to see if Vasco-Pais Willem or Barranco Ingrid can be ruled out. Consider the transaction made on credit card 2463 at 1/8/2014, 12:00 PM at Jack’s Magical Beans (see fig 3.3).<br><br>Again, go back to the interactive map and see if either Vasco-Pais Willem or Barranco Ingrid were at this location around 12PM. Vasco-Pais Willem was at Jack’s Magical Beans on 1/8/2014 but at 6AM, not 12PM (see fig 3.4). Barranco Ingrid was not at Jack’s Magical Beans at all on 1/8/2014. Although  Vasco-Pais Willem was at Jack’s Magical Beans at 6AM and not 12PM as logged by the credit card, it’s possible the transaction time is delayed or not accurate. Thus, the owner of credit card 2463 is likely Vasco-Pais Willem.<br><br> The loyalty card associated with credit card 2463 is L6886 which we know based off joining credit card and loyalty card data (see fig 3.5).| ![Fig 3.1](images/q3.1.png){width=100%} Fig 3.1<br><br><br><br> ![Fig 3.2](images/q3.2.png){width=100%} Fig 3.2<br><br><br><br> ![Fig 3.3](images/q3.3.png){width=100%} Fig 3.3<br><br><br><br> ![Fig 3.4](images/q3.4.png){width=100%} Fig 3.4<br><br><br><br> ![Fig 3.5](images/q3.5.png){width=100%} Fig 3.5<br><br><br><br>|
+|4|To identify relationships, I graph networks using POI data, specifically meets ups. As a reminder, meet ups are POIs that overlap in time and happened in the same area (within 100 meters).<br><br> To narrow down the POIs to informal or unofficial relationships, I graph networks by various time dimensions. First, consider fig 4.1 which graphs meet ups over the weekend (Saturday and Sunday) and were longer than 2 hours. Second, consider fig 4.2 which graphs POIs between 9PM-12AM.<br><br> The potential informal relationships identified from these two network graphs are:<br> 1) Bodrogi Loreto, Ferro Inga, Vann Isia<br> 2) Flecha Sven, Mies Minke, Tempestad Brand<br> 3) Lagos Varja, Nubarron Adra<br> 4) Resumir Felix, Nubarron Adra<br> 5) Resumir Felix, Nubarron Adra, Lagos Varia<br> 6) Bergen Linnea, Ovan Bertrand, Herroro Kanon<br> 7) Mies Minke, Flecha Sven, Tempestad Brand| ![Fig 4.1](images/q4.1.png){width=100%} Fig 4.1<br><br><br><br> ![Fig 4.2](images/q4.2.png){width=100%} Fig 4.2<br><br><br><br>|
+|5.1| Bodrogi Loreto and Vann Isia both arrive near Barwyn and Spetson at 3AM on Tuesday, January 7, 2014 and hang around there for roughly 3 hours (see fig 5.1). This appears to be where Campo-Corrente Ada, SVP at GAStech lives based on their GPS data (arrival at 9PM and departure next day at 6AM). What are Loreto and Isia doing at this location at 3AM?| ![Fig 5.1](images/q5.1.png){width=100%} Fig 5.1|
+|5.2| According to credit card data several transactions were made at Kronos Mart at 3AM which is suspicious onto itself (see fig 5.2). In addition, when cross-referenced with the interactive map, there were no POIs that could have matched with these transactions. Is a data quality issue or surreptitious behavior?| ![Fig 5.2](images/q5.2.png){width=100%} Fig 5.2|
+|5.3| EDA on boxplots of transaction prices by location revealed some outliers in transactions for several merchants, particularly Frydos Autosupply for $10,000 (see fig 5.3). In addition, the credit card associated with this transaction is credit card 9551 which is one of the credit cards flagged in 5.2 for purchases at Kronos Mart at 3AM.| ![Fig 5.3](images/q5.3.png){width=100%} Fig 5.3|
+|5.4| Calixto Nils from the IT department is regularly at the GAStech office late at night 9PM – 1AM. Why are they are the office so late at night on a regular basis?| ![Fig 5.4](images/q5.4.png){width=100%} Fig 5.4|
+|5.5| Off Pilau Street, there’s a location between Frank’s Fuels and Maximum Iron & Steel where Mies Minke and Osvaldo Hennie meet up around 12PM on January 16. In addition, other people appear to come to this location regularly For example, Bodrogi Loreto visits this location on January 7, January 10, 11, and 14. Ferro Inga visits this location on January 9.| ![Fig 5.5](images/q5.5.png){width=100%} Fig 5.5|
