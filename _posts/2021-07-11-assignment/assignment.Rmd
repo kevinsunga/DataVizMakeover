@@ -498,11 +498,12 @@ sf_poi <- rename(sf_poi, ArrivalTimestamp = Timestamp)
 I graph the POIs onto the georeferenced map.
 
 <center>
-### POIs by Date
+### Interactive Maps with POIs by Date (filtered for 2 dates)
 </center>
 
 ```{r}
 gps_dots_selected <- sf_poi %>%
+  filter(day_timestamp == "2014-01-06" | day_timestamp == "2014-01-18") %>%
   mutate(MinutesDuration = round(Timestamp_diff_seconds / 60, 2)) %>%
   select(id,
          day_timestamp,
@@ -522,7 +523,7 @@ m_d <- tm_shape(bgmap) +
          interpolate = TRUE,
          max.value = 255) +
 tm_shape(gps_dots_selected) +
-  tm_dots(col = 'red', border.col = 'gray', size = .4, alpha = 0.3, jitter = .8) +
+  tm_dots(col = 'red', border.col = 'gray', size = .2, alpha = 0.3, jitter = .8) +
   tm_facets(by = "day_timestamp", ncol = 1)
 m_d
 ```
